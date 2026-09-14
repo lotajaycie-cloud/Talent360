@@ -4951,21 +4951,42 @@ class Component extends DCLogic {
     const myPool = this.pool();
     const teamPending = myPool.filter(p=>!p.box);
     const teamDone = myPool.filter(p=>p.box);
-    const greeting = role==='ADMIN' ? 'Welcome back, Jaycie.' : role==='PM' ? 'Welcome back, Marlo.' : 'Welcome back, Jorge.';
-    const homeSub = role==='ADMIN' ? 'Cycle health across all four companies.' : role==='PM' ? 'Four of your six reports still need an assessment.' : 'Your 2026 review and development plan.';
+    /* The greeting names whoever signed in. Falls back to the demo identity
+       only when there is no session. */
+    const who = s.authUser || ident || {};
+    const firstName = (function(u){
+      if(u.short) return tidyName(u.short);   /* curated on the account */
+      const n = u.name;
+      if(!n) return 'there';
+      const parts = String(n).split(',');
+      const given = (parts.length>1 ? parts[1] : parts[0]).trim().split(/\s+/)[0] || n;
+      return tidyName(given);
+    })(who);
+    const greeting = 'Welcome back, '+firstName+'.';
+    const homeSub =
+        role==='ADMIN' ? 'Cycle health across the whole databank.'
+      : role==='HRBP'  ? ('Completion across your '+myPool.length+' assigned talents.')
+      : role==='EXEC'  ? ('Cycle health across your '+myPool.length+'-person organisation.')
+      : role==='PM'    ? (teamPending.length
+                           ? (teamPending.length+' of your '+myPool.length+' reports still need an assessment.')
+                           : 'Every one of your reports is assessed for this cycle.')
+      : 'Your '+this.activeCycle().year+' review and development plan.';
 
     let heroKicker, heroNum, heroUnit, heroBadge, heroDesc, heroPct, heroCtaLabel, heroCta;
-    if(role==='ADMIN'){
+    if(role==='ADMIN' || role==='HRBP' || role==='EXEC'){
       /* The fish fills to actual completion: placed / target for this cycle. */
       const cycNow = this.activeCycle();
-      const heroTarget = cycNow.target || myPool.length || 1;
+      const heroTarget = (role==='ADMIN' ? (cycNow.target || myPool.length) : myPool.length) || 1;
       const heroDone = teamDone.length;
       const heroOpen = Math.max(0, heroTarget - heroDone);
-      heroKicker='Talents assessed CPG wide'; heroNum=String(heroDone);
-      heroUnit='of '+heroTarget+' in the '+cycNow.year+' population'; heroBadge=Math.round((heroDone/heroTarget)*100)+'%';
+      heroKicker = role==='ADMIN' ? 'Talents assessed CPG wide'
+                 : (role==='HRBP' ? 'Talents assessed in your scope' : 'Talents assessed in your organisation');
+      heroNum=String(heroDone);
+      heroUnit='of '+heroTarget+(role==='ADMIN'?(' in the '+cycNow.year+' population'):' in your scope'); heroBadge=Math.round((heroDone/heroTarget)*100)+'%';
+      const whereTxt = role==='ADMIN' ? ('the '+cycNow.year+' population') : 'your scope';
       heroDesc = heroOpen
-        ? (heroOpen+' of the '+heroTarget+' talents in the '+cycNow.year+' population still have no result on file. Calibration cannot close until the population is placed.')
-        : ('All '+heroTarget+' talents in the '+cycNow.year+' population are placed on the 9-box.');
+        ? (heroOpen+' of the '+heroTarget+' talents in '+whereTxt+' still have no result on file. Calibration cannot close until the population is placed.')
+        : ('All '+heroTarget+' talents in '+whereTxt+' are placed on the 9-box.');
       heroPct=Math.round((heroDone/heroTarget)*100); heroCtaLabel='Open the 9-box grid'; heroCta=()=>this.go('grid');
     } else if(role==='PM'){
       const mine = myPool.length || 1;
