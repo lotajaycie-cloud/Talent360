@@ -4912,6 +4912,8 @@ class Component extends DCLogic {
           const tiers=named[r.id]||{};
           return Object.keys(tiers).some(t=>(tiers[t]||[]).some(id=>mine[id]));
         });
+        /* An HR partner does not carry executive roles. */
+        if(role==='HRBP') list = list.filter(r=>r.leaderLevel!=='EXEC');
       }
       return list;
     })(this);
@@ -5474,7 +5476,8 @@ class Component extends DCLogic {
       const t=s.successors[r.id]||{};
       return READINESS.some(k=>(t[k]||[]).length>0);
     };
-    const leaderLevels = ['All','EXEC','DM'].map(lv=>{
+    const LEVEL_CHOICES = role==='HRBP' ? ['All','DM'] : ['All','EXEC','DM'];
+    const leaderLevels = LEVEL_CHOICES.map(lv=>{
       const pool = lv==='All' ? leaderAll : leaderAll.filter(r=>r.leaderLevel===lv);
       const on = lvlPick===lv;
       return {label: lv==='All'?'All levels':(lv+' level'), count:String(pool.length),
@@ -5609,7 +5612,7 @@ class Component extends DCLogic {
         const pool=deptUnits[unit];
         const assessed=pool.filter(p=>!!p.box).length;
         const planned=pool.filter(p=>this.plansOf(p.id).length>0).length;
-        const leaders=pool.filter(p=>(p.level==='EXEC'||p.level==='DM') && leaderByPerson[p.id]);
+        const leaders=pool.filter(p=>((role!=='HRBP' && p.level==='EXEC')||p.level==='DM') && leaderByPerson[p.id]);
         const mapped=leaders.filter(p=>{
           const t=s.successors[leaderByPerson[p.id].id]||{};
           return REAL_TIERS.some(k=>(t[k]||[]).length>0);
@@ -5636,12 +5639,10 @@ class Component extends DCLogic {
         ? (c2.coverOnly+(c2.coverOnly===1?' has':' have')+' emergency cover only, which does not count as a successor.')
         : 'No role here is relying on emergency cover alone.'
     });
-    const succCoverRows = [
-      coverRow('EXEC level', coverExec, '#F8ECEF', '#7C1F3D'),
-      coverRow('DM level',   coverDm,   '#E8ECFD', '#3C4EC4')
-    ];
-    const coverBothTotal = coverExec.total + coverDm.total;
-    const coverBothDone  = coverExec.covered + coverDm.covered;
+    const succCoverRows = (role==='HRBP' ? [] : [coverRow('EXEC level', coverExec, '#F8ECEF', '#7C1F3D')])
+      .concat([coverRow('DM level', coverDm, '#E8ECFD', '#3C4EC4')]);
+    const coverBothTotal = (role==='HRBP'?0:coverExec.total) + coverDm.total;
+    const coverBothDone  = (role==='HRBP'?0:coverExec.covered) + coverDm.covered;
 
     const leaderFilters = [['All','All'],['Mapped','Mapped'],['No map','No map']].map(f=>{
       const on=(s.leaderFilter||'All')===f[0];
@@ -6179,7 +6180,7 @@ class Component extends DCLogic {
       deptProgressNote: deptProgressRows.length+' departments in your scope. Assessment and plan completion are measured against everyone in the department; succession against its EXEC and DM leaders only.',
       succCoverRows,
       succCoverHeadline: coverBothTotal?Math.round((coverBothDone/coverBothTotal)*100)+'%':'0%',
-      succCoverSub: coverBothDone+' of '+coverBothTotal+' EXEC and DM roles have at least one named successor',
+      succCoverSub: coverBothDone+' of '+coverBothTotal+(role==='HRBP'?' DM roles':' EXEC and DM roles')+' have at least one named successor',
       succCoverNote: 'Emergency cover is not counted \u2014 a role is only covered when a successor is named at a readiness tier.',
       succOverviewNote: benchTotal+' people sit on the bench across '+mappedCount+' mapped roles. Emergency cover is named for '+rolesWithCover+'.',
       leaderLevels,
@@ -6532,7 +6533,8 @@ class Component extends DCLogic {
       /* An HR partner never sees their own assessment, even if the
          tracker assigned them to themselves. */
       const set={}; mine.forEach(id=>{ if(id!==self) set[id]=true; });
-      return {kind:'hrbp', hp, people: all.filter(p=>set[p.id]),
+      /* Executive roles are out of an HR partner's roster — DM and below only. */
+      return {kind:'hrbp', hp, people: all.filter(p=>set[p.id] && p.level!=='EXEC'),
               label: hp ? (hp.short+"'s assigned talents") : 'Assigned talents'};
     }
     if(role==='EXEC'){
