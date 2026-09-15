@@ -3787,6 +3787,96 @@ function(a,b,c){if(!Vd(b))throw Error(m(200));return Wd(null,a,b,!1,c)};Q.unmoun
             </sc-if>
             </sc-if>
 
+            <!-- IDP view -->
+            <sc-if value="{{ idView }}" hint-placeholder-val="{{ false }}">
+              <div style="font:500 11.5px/1.6 'Plus Jakarta Sans',sans-serif;color:#6E685C;margin-top:16px">{{ idpHeadline }}</div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px">
+                <sc-for list="{{ idpTiles }}" as="it" hint-placeholder-count="4">
+                  <div style="border-radius:18px;background:{{ it.tint }};border:1px solid {{ it.border }};padding:14px">
+                    <div style="font:700 8.5px/1.4 'Plus Jakarta Sans',sans-serif;letter-spacing:.07em;text-transform:uppercase;color:{{ it.fg }}">{{ it.kicker }}</div>
+                    <div style="font:800 24px/1.1 'Plus Jakarta Sans',sans-serif;color:#16171F;margin-top:5px">{{ it.value }}</div>
+                    <div style="font:500 10px/1.45 'Plus Jakarta Sans',sans-serif;color:#6E685C;margin-top:3px;overflow-wrap:anywhere">{{ it.sub }}</div>
+                  </div>
+                </sc-for>
+              </div>
+
+              <sc-if value="{{ idpEmpty }}" hint-placeholder-val="{{ false }}">
+                <div style="margin-top:12px;padding:14px;border-radius:14px;background:#F7F5F1;font:500 11px/1.5 'Plus Jakarta Sans',sans-serif;color:#8A8478">{{ idpActionNote }}</div>
+              </sc-if>
+
+              <div style="margin-top:12px;border-radius:22px;background:#fff;border:1px solid #EAE6DF;padding:18px">
+                <div style="display:flex;align-items:center;gap:9px">
+                  <div style="flex:none;width:28px;height:28px;border-radius:9px;background:#FDF1D9;color:#8A6413;display:grid;place-items:center"><svg width="16" height="16"><use href="#ic-target"></use></svg></div>
+                  <div style="flex:1;font:800 13px/1.3 'Plus Jakarta Sans',sans-serif;color:#16171F">Where the actions stand</div>
+                </div>
+                <div style="margin-top:12px">
+                  <sc-for list="{{ idpStatusRows }}" as="sr" hint-placeholder-count="5">
+                    <div style="display:flex;align-items:center;gap:8px;padding:9px 0;border-top:1px solid {{ sr.divider }}">
+                      <div style="flex:none;width:76px;font:600 10px/1.3 'Plus Jakarta Sans',sans-serif;color:#6E685C">{{ sr.label }}</div>
+                      <div style="flex:1;min-width:0;height:7px;border-radius:4px;background:#F2EFE9;overflow:hidden">
+                        <div style="height:100%;width:{{ sr.pct }}%;background:{{ sr.bar }};border-radius:4px"></div>
+                      </div>
+                      <div style="flex:none;width:38px;text-align:right;font:500 9.5px/1 'Plus Jakarta Sans',sans-serif;color:#8A8478">{{ sr.count }}</div>
+                      <div style="flex:none;width:34px;text-align:right;font:800 10.5px/1 'Plus Jakarta Sans',sans-serif;color:{{ sr.bar }}">{{ sr.pct }}%</div>
+                    </div>
+                  </sc-for>
+                </div>
+                <div style="font:500 10.5px/1.5 'Plus Jakarta Sans',sans-serif;color:#8A8478;margin-top:10px">{{ idpActionNote }}</div>
+              </div>
+
+              <div style="margin-top:12px;border-radius:22px;background:#fff;border:1px solid #EAE6DF;padding:18px">
+                <div style="display:flex;align-items:center;gap:9px">
+                  <div style="flex:none;width:28px;height:28px;border-radius:9px;background:#E8ECFD;color:#3C4EC4;display:grid;place-items:center"><svg width="16" height="16"><use href="#ic-check-list"></use></svg></div>
+                  <div style="flex:1;font:800 13px/1.3 'Plus Jakarta Sans',sans-serif;color:#16171F">By plan format</div>
+                </div>
+                <div style="margin-top:12px">
+                  <sc-for list="{{ idpFormatRows }}" as="fr" hint-placeholder-count="2">
+                    <div style="padding:11px 0;border-top:1px solid {{ fr.divider }}">
+                      <div style="display:flex;align-items:baseline;gap:8px">
+                        <div style="flex:1;min-width:0;font:700 12px/1.35 'Plus Jakarta Sans',sans-serif;color:#16171F">{{ fr.label }}</div>
+                        <span style="flex:none;padding:3px 8px;border-radius:7px;background:#F2EFE9;color:#6E685C;font:700 9.5px/1.5 'Plus Jakarta Sans',sans-serif;white-space:nowrap">{{ fr.people }} talents</span>
+                      </div>
+                      <div style="display:flex;align-items:center;gap:8px;margin-top:7px">
+                        <div style="flex:1;min-width:0;height:7px;border-radius:4px;background:#F2EFE9;overflow:hidden">
+                          <div style="height:100%;width:{{ fr.pct }}%;background:{{ fr.bar }};border-radius:4px"></div>
+                        </div>
+                        <div style="flex:none;width:62px;text-align:right;font:500 9.5px/1 'Plus Jakarta Sans',sans-serif;color:#8A8478">{{ fr.actions }} acts</div>
+                      </div>
+                    </div>
+                  </sc-for>
+                </div>
+              </div>
+
+              <div style="margin-top:12px;border-radius:22px;background:#fff;border:1px solid #EAE6DF;padding:18px">
+                <div style="display:flex;align-items:center;gap:9px">
+                  <div style="flex:none;width:28px;height:28px;border-radius:9px;background:#E1F5EC;color:#1F7A48;display:grid;place-items:center"><svg width="16" height="16"><use href="#ic-people"></use></svg></div>
+                  <div style="flex:1;font:800 13px/1.3 'Plus Jakarta Sans',sans-serif;color:#16171F">Plan coverage by department</div>
+                </div>
+                <div style="font:500 11px/1.55 'Plus Jakarta Sans',sans-serif;color:#6E685C;margin-top:6px">{{ idpUnitNote }}</div>
+                <div style="margin-top:12px">
+                  <sc-for list="{{ idpUnitRows }}" as="ur" hint-placeholder-count="6">
+                    <div style="padding:12px 0;border-top:1px solid {{ ur.divider }}">
+                      <div style="display:flex;align-items:baseline;gap:8px">
+                        <div style="flex:1;min-width:0;font:800 12px/1.35 'Plus Jakarta Sans',sans-serif;color:#16171F;overflow-wrap:anywhere">{{ ur.unit }}</div>
+                        <span style="flex:none;padding:3px 8px;border-radius:7px;background:#F2EFE9;color:#6E685C;font:700 9.5px/1.5 'Plus Jakarta Sans',sans-serif;white-space:nowrap">{{ ur.actions }}</span>
+                      </div>
+                      <div style="display:flex;align-items:baseline;gap:4px;margin-top:3px">
+                        <span style="flex:none;font:700 8.5px/1.4 'Plus Jakarta Sans',sans-serif;letter-spacing:.07em;text-transform:uppercase;color:#B0AAA0">HR</span>
+                        <span style="flex:1;min-width:0;font:500 9.5px/1.45 'Plus Jakarta Sans',sans-serif;color:#8A8478;overflow-wrap:anywhere">{{ ur.owner }}</span>
+                      </div>
+                      <div style="display:flex;align-items:center;gap:8px;margin-top:8px">
+                        <div style="flex:1;min-width:0;height:7px;border-radius:4px;background:#F2EFE9;overflow:hidden">
+                          <div style="height:100%;width:{{ ur.pct }}%;background:{{ ur.bar }};border-radius:4px"></div>
+                        </div>
+                        <div style="flex:none;width:52px;text-align:right;font:500 9.5px/1 'Plus Jakarta Sans',sans-serif;color:#8A8478">{{ ur.value }}</div>
+                        <div style="flex:none;width:34px;text-align:right;font:800 10.5px/1 'Plus Jakarta Sans',sans-serif;color:{{ ur.bar }}">{{ ur.pct }}%</div>
+                      </div>
+                    </div>
+                  </sc-for>
+                </div>
+              </div>
+            </sc-if>
+
             <sc-if value="{{ suView }}" hint-placeholder-val="{{ false }}">
 <div style="margin-top:14px;border-radius:22px;background:#fff;border:1px solid #EAE6DF;padding:18px">
                 <div style="display:flex;align-items:flex-start;gap:9px">
@@ -4304,10 +4394,34 @@ function tidyDate(v){
   if(!m) return String(v).replace(/\s00:00:00$/,'');
   return Number(m[3])+' '+MON3[Number(m[2])-1]+' '+m[1];
 }
+/* The tracker's status column is free text: Done, DONE, done, On-Going,
+   On - Going, On-Going/On-Track, "1. Done 2. Done 3. Done" all appear. The
+   old reader matched three exact strings, so 20 filed actions with a real
+   status were read as nothing started. One normaliser now, used everywhere
+   a plan is counted or drawn. */
+const PLAN_STATES = {
+  Done:      {label:'Done',        progress:100, color:'#2F9E5C', tint:'#E1F5EC'},
+  Ongoing:   {label:'Ongoing',     progress:50,  color:'#C98A1F', tint:'#FDF1D9'},
+  Behind:    {label:'Behind',      progress:25,  color:'#C4433A', tint:'#FBE4E2'},
+  Deferred:  {label:'Deferred',    progress:0,   color:'#6E685C', tint:'#F2EFE9'},
+  NotStarted:{label:'Not started', progress:0,   color:'#8A8478', tint:'#F7F5F1'}
+};
+const PLAN_STATE_ORDER = ['Done','Ongoing','Behind','Deferred','NotStarted'];
+function planState(raw){
+  const t = String(raw||'').trim().toLowerCase().replace(/[\s\-]+/g,' ');
+  if(!t) return 'NotStarted';
+  if(t.indexOf('not yet started')>=0 || t==='not started') return 'NotStarted';
+  if(t.indexOf('behind')>=0) return 'Behind';
+  if(t.indexOf('defer')>=0 || t==='pending' || t==='tba' || t==='tbd') return 'Deferred';
+  if(t.indexOf('done')>=0) return 'Done';            /* covers DONE, done, "1. Done 2. Done 3. Done" */
+  if(t.indexOf('on going')>=0 || t.indexOf('ongoing')>=0 || t.indexOf('on track')>=0) return 'Ongoing';
+  return 'NotStarted';
+}
 function devRow(r){
   return {id:'e'+r[0], action:r[1],
     learning:r[2]<0?null:T360.learn[r[2]], partner:r[3]<0?null:T360.partner[r[3]],
     target:r[4]<0?null:tidyDate(T360.target[r[4]]), status:r[5]<0?'Not Yet Started':T360.status[r[5]],
+    state: planState(r[5]<0?'':T360.status[r[5]]),
     source: r[6]===1?'8QTR':'IDP'};
 }
 const IDP_ROWS = T360.idp.map(devRow);
@@ -4890,9 +5004,10 @@ class Component extends DCLogic {
     if(this.state.plans[id]) return this.state.plans[id];
     const src = (Q8_BY[id]||[]).concat(IDP_BY[id]||[]);
     return src.map(function(r,i){
+      const st = PLAN_STATES[r.state] || PLAN_STATES.NotStarted;
       return {id:'d'+i, text:r.action, learning:r.learning, partner:r.partner,
         target:r.target, statusText:r.status, source:r.source,
-        progress: r.status==='Done'?100:(r.status==='Ongoing'?50:(r.status==='Behind'?25:0))};
+        state:r.state, progress: st.progress};
     });
   }
   planPct(id){ const l=this.plansOf(id); if(!l.length) return 0; return Math.round((l.filter(a=>a.progress===100).length/l.length)*100); }
@@ -5761,6 +5876,61 @@ class Component extends DCLogic {
           ? ' Separately, '+missNoRole.length+' EXEC or DM in scope hold no critical role on the succession map at all.'
           : '');
 
+    /* ---- IDP view -----------------------------------------------------
+       Same unit cohort as the department bars, so the IDP tab and the
+       Talent review tab cannot disagree about the same department. People
+       are counted as people and actions as actions, never mixed. */
+    const idpActions = [];
+    deptPool.forEach(p=>{ this.plansOf(p.id).forEach(a=>{
+      idpActions.push({unit:p.bu||'Not mapped', state:a.state||'NotStarted', source:a.source||'IDP'}); }); });
+    const idpWith   = deptPool.filter(p=>this.plansOf(p.id).length>0);
+    const idpClosed = idpActions.filter(a=>a.state==='Done').length;
+    const idpBehind = idpActions.filter(a=>a.state==='Behind').length;
+    const idpPct    = pctOf(idpWith.length, deptPool.length);
+    const idpTiles = [
+      {kicker:'WITH A PLAN', value:String(idpWith.length),
+       sub:'of '+deptPool.length+' talents \u00b7 '+idpPct+'%', fg:'#7C1F3D', tint:'#F8ECEF', border:'#F0DCE2'},
+      {kicker:'ACTIONS FILED', value:String(idpActions.length),
+       sub:'across those '+idpWith.length+' plans', fg:'#3C4EC4', tint:'#E8ECFD', border:'#DCE1F7'},
+      {kicker:'CLOSED', value:String(idpClosed),
+       sub:'actions marked done', fg:'#1F7A48', tint:'#E1F5EC', border:'#CDEBDC'},
+      {kicker:'BEHIND', value:String(idpBehind),
+       sub:'actions flagged behind', fg:'#8A6413', tint:'#FDF1D9', border:'#F0DFB8'}
+    ];
+    const idpStatusRows = PLAN_STATE_ORDER.map(function(k,i){
+      const st=PLAN_STATES[k], n=idpActions.filter(a=>a.state===k).length;
+      return {label:st.label, count:String(n),
+        pct: idpActions.length?Math.round((n/idpActions.length)*100):0,
+        bar: st.color, divider:i===0?'transparent':'#F2EFE9'};
+    });
+    /* Successors carry the 8-quarter plan; everyone else the standard IDP.
+       Split on the format actually filed, not on what the rule expects. */
+    const idpFormatRows = [['8QTR','8-quarter plan'],['IDP','Standard IDP']].map(function(f,i){
+      const n=idpActions.filter(a=>a.source===f[0]).length;
+      const heads={}; deptPool.forEach(p=>{
+        if(this.plansOf(p.id).some(a=>(a.source||'IDP')===f[0])) heads[p.id]=true; });
+      return {label:f[1], actions:String(n), people:String(Object.keys(heads).length),
+        pct: idpActions.length?Math.round((n/idpActions.length)*100):0,
+        bar: f[0]==='8QTR'?'#7C1F3D':'#3C4EC4', divider:i===0?'transparent':'#F2EFE9'};
+    }, this);
+    /* By business unit, weakest coverage first — the card is there to show
+       where the plans are missing, not to rank the departments that are fine. */
+    const idpUnitRows = Object.keys(deptUnits).map(function(unit){
+      const pool=deptUnits[unit];
+      const withPlan=pool.filter(p=>this.plansOf(p.id).length>0).length;
+      const acts=pool.reduce((t,p)=>t+this.plansOf(p.id).length,0);
+      const pct=pctOf(withPlan,pool.length);
+      const hr=BU_PARTNER[unit];
+      return {unit:tidyUnit(unit), _pct:pct,
+        owner: hr==='ADMIN' ? 'Super Admin \u00b7 Corporate HR'
+             : (hr==='AVRIL' ? 'Rodriguez, Avril Alexandra L.'
+             : tidyName((BY_EMPNO[hr]||{}).name) || 'Not assigned'),
+        value: withPlan+'/'+pool.length, pct:pct, bar:barFor(pct),
+        actions: acts+(acts===1?' action':' actions')};
+    }, this).sort((a,b)=>a._pct-b._pct || a.unit.localeCompare(b.unit))
+      .map((r,i)=>Object.assign(r,{divider:i===0?'transparent':'#F2EFE9'}));
+    const idpZeroUnits = idpUnitRows.filter(r=>r._pct===0).length;
+
     const coverRow = (label, c2, tint, bar)=>({
       level:label, covered:String(c2.covered), total:String(c2.total),
       pct: c2.total?Math.round((c2.covered/c2.total)*100):0,
@@ -6252,7 +6422,18 @@ class Component extends DCLogic {
       scopeRows, hasScopeRows:scopeRows.length>0,
       trView: (s.anView||'review')==='review',
       suView: (s.anView||'review')==='succession',
-      anTabs: [['review','Talent review'],['succession','Succession']].map(function(t){
+      idView: (s.anView||'review')==='idp',
+      idpTiles, idpStatusRows, idpFormatRows, idpUnitRows,
+      idpHeadline: idpWith.length+' of '+deptPool.length+' talents in scope carry a development plan, '
+        +idpPct+'%. Counted on the same '+this.cycleYear()+' population as the department bars.',
+      idpUnitNote: idpZeroUnits
+        ? (idpZeroUnits+(idpZeroUnits===1?' department has':' departments have')+' no plan on file at all. Weakest coverage first.')
+        : 'Every department in scope has at least one plan on file. Weakest coverage first.',
+      idpActionNote: idpActions.length
+        ? 'Status is read from the tracker\u2019s own column, with its spelling variants folded together.'
+        : 'No development actions are filed for this scope yet.',
+      idpEmpty: idpActions.length===0,
+      anTabs: [['review','Talent review'],['succession','Succession'],['idp','IDP']].map(function(t){
         const on=(s.anView||'review')===t[0];
         return {label:t[1], bg:on?'#16171F':'#fff', fg:on?'#fff':'#5C5A55',
                 border:on?'#16171F':'#EAE6DF', pick:()=>this.setState({anView:t[0]})};
@@ -6279,9 +6460,18 @@ class Component extends DCLogic {
       glanceTiles: (()=>{
         const placed = allPeople.filter(p=>p.box).length;
         const green  = allPeople.filter(p=>p.box && ZONE_OF[p.box]==='A').length;
-        const named  = (()=>{ let t=0; Object.keys(this.state.successors).forEach(rid=>{
-                        const m=this.state.successors[rid]||{}; Object.keys(m).forEach(tier=>{ t+=(m[tier]||[]).length; }); }); return t; })();
-        const active = this.pool().reduce((t,p)=>t+this.plansOf(p.id).length,0);
+        /* Scoped like every other tile in this strip. It used to total every
+           successor named anywhere, so a partner with 97 talents was shown
+           the org-wide 297. */
+        const inScope={}; allPeople.forEach(p=>{ inScope[p.id]=true; });
+        const named  = (()=>{ const seen={}; Object.keys(this.state.successors).forEach(rid=>{
+                        const m=this.state.successors[rid]||{};
+                        Object.keys(m).forEach(tier=>{ (m[tier]||[]).forEach(id=>{ if(inScope[id]) seen[id]=true; }); }); });
+                        return Object.keys(seen).length; })();
+        /* People, not actions. The other three tiles count talents, so this
+           one did too once it stopped reporting a raw action total. */
+        const planned = allPeople.filter(p=>this.plansOf(p.id).length>0).length;
+        const actions = allPeople.reduce((t,p)=>t+this.plansOf(p.id).length,0);
         const P = PRODUCT;
         return [
           {kicker:'ASSESSED', value:String(placed), sub:'placed on the 9-box', icon:P.TUNA.icon,
@@ -6290,10 +6480,10 @@ class Component extends DCLogic {
           {kicker:'GREEN ZONE', value:String(green), sub:'Zone A talents', icon:P.COCONUT.icon,
            fg:P.COCONUT.fg, tint:P.COCONUT.tint, border:P.COCONUT.border,
            go:()=>this.setState({tab:'home',screen:'greenzone'})},
-          {kicker:'SUCCESSORS', value:String(named), sub:'named across roles', icon:P.SARDINES.icon,
+          {kicker:'SUCCESSORS', value:String(named), sub:'named talents in scope', icon:P.SARDINES.icon,
            fg:P.SARDINES.fg, tint:P.SARDINES.tint, border:P.SARDINES.border,
            go:()=>this.setState({screen:'succmap'})},
-          {kicker:'DEV ACTIONS', value:String(active), sub:'in active plans', icon:P.MILK.icon,
+          {kicker:'WITH A PLAN', value:String(planned), sub:String(actions)+' actions filed', icon:P.MILK.icon,
            fg:P.MILK.fg, tint:P.MILK.tint, border:P.MILK.border,
            go:()=>this.setState({tab:'plans',screen:null})}
         ];
@@ -6713,14 +6903,14 @@ class Component extends DCLogic {
     if(src.length) return src.map(function(r,i){
       return {id:'q'+i, label:r.target||('Item '+(i+1)), action:r.action,
         learning:r.learning, partner:r.partner, target:r.target,
-        status:r.status, source:r.source};
+        status:r.status, state:r.state, source:r.source};
     });
     return blankQuarterPlan(this.activeCycle().year);
   }
   quarterPct(id){
     const q=this.quarterPlan(id);
     if(!q.length) return 0;
-    const done=q.filter(x=>x.status==='Done').length;
+    const done=q.filter(x=>(x.state||planState(x.status))==='Done').length;
     return Math.round((done/q.length)*100);
   }
   openQuarter = (personId, qid) => {
