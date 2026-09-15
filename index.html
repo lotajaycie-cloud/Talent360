@@ -3688,6 +3688,38 @@ function(a,b,c){if(!Vd(b))throw Error(m(200));return Wd(null,a,b,!1,c)};Q.unmoun
                 </div>
               </div>
 
+              <!-- Who is missing what: assessment, plan, successor -->
+              <div style="margin-top:12px;border-radius:22px;background:#fff;border:1px solid #EAE6DF;padding:18px">
+                <div style="display:flex;align-items:center;gap:9px">
+                  <div style="flex:none;width:28px;height:28px;border-radius:9px;background:#FDF1D9;color:#8A6413;display:grid;place-items:center"><svg width="16" height="16"><use href="#ic-check-list"></use></svg></div>
+                  <div style="flex:1;font:800 13px/1.3 'Plus Jakarta Sans',sans-serif;color:#16171F">{{ missTitle }}</div>
+                </div>
+                <div style="display:flex;gap:7px;margin-top:12px;flex-wrap:wrap">
+                  <sc-for list="{{ missChips }}" as="mc" hint-placeholder-count="3">
+                    <button sc-on:click="{{ mc.pick }}" style="flex:1;min-width:98px;text-align:left;padding:8px 11px;border-radius:12px;background:{{ mc.bg }};border:1px solid {{ mc.border }};cursor:pointer">
+                      <div style="font:700 10px/1.3 'Plus Jakarta Sans',sans-serif;color:{{ mc.fg }}">{{ mc.label }}</div>
+                      <div style="font:800 15px/1.2 'Plus Jakarta Sans',sans-serif;color:{{ mc.fg }};margin-top:2px">{{ mc.count }}</div>
+                    </button>
+                  </sc-for>
+                </div>
+                <div style="font:500 11px/1.55 'Plus Jakarta Sans',sans-serif;color:#6E685C;margin-top:10px">{{ missBlurb }}</div>
+                <sc-if value="{{ missEmpty }}" hint-placeholder-val="{{ false }}">
+                  <div style="margin-top:12px;padding:14px;border-radius:14px;background:#F7F5F1;font:500 11px/1.5 'Plus Jakarta Sans',sans-serif;color:#8A8478">{{ missEmptyText }}</div>
+                </sc-if>
+                <div style="margin-top:8px">
+                  <sc-for list="{{ missRows }}" as="mr" hint-placeholder-count="6">
+                    <button sc-on:click="{{ mr.open }}" style="display:flex;align-items:center;gap:10px;width:100%;text-align:left;padding:11px 0;border:0;border-top:1px solid {{ mr.divider }};background:transparent;cursor:pointer">
+                      <div style="flex:none;width:30px;height:30px;border-radius:10px;background:{{ mr.avBg }};color:#fff;display:grid;place-items:center;font:800 10.5px/1 'Plus Jakarta Sans',sans-serif">{{ mr.initials }}</div>
+                      <div style="flex:1;min-width:0">
+                        <div style="font:700 12px/1.35 'Plus Jakarta Sans',sans-serif;color:#16171F;overflow-wrap:anywhere">{{ mr.name }}</div>
+                        <div style="font:500 10px/1.45 'Plus Jakarta Sans',sans-serif;color:#8A8478;overflow-wrap:anywhere">{{ mr.sub }}</div>
+                      </div>
+                    </button>
+                  </sc-for>
+                </div>
+                <div style="font:500 10.5px/1.5 'Plus Jakarta Sans',sans-serif;color:#8A8478;margin-top:10px">{{ missMore }}</div>
+              </div>
+
               <sc-if value="{{ showDeptBreakdown }}" hint-placeholder-val="{{ false }}">
               <div style="margin-top:12px;border-radius:22px;background:#fff;border:1px solid #EAE6DF;padding:18px">
                 <div style="display:flex;align-items:center;gap:9px">
@@ -4831,6 +4863,27 @@ class Component extends DCLogic {
     if(this.state.role!=='ADMIN') return this.scope().people;
     return this.cyclePopulation();
   }
+  /* Department metrics are UNIT metrics. One cohort per business unit, on
+     the cycle's assessed population, identical for every role that can see
+     that unit. Role decides WHICH units you see, never the denominator.
+     Person-level access stays with scope(); this is counting only. */
+  unitsInScope(){
+    const role=this.state.role;
+    if(role==='ADMIN') return null;              /* null means every unit */
+    if(role==='HRBP'){ const hp=this.hrPartner(); return hp ? hp.units.slice() : []; }
+    const seen={}; this.scope().people.forEach(p=>{ if(p.bu) seen[p.bu]=true; });
+    return Object.keys(seen);
+  }
+  unitCohort(){
+    const role=this.state.role;
+    /* Department reporting belongs to roles that own departments. A people
+       manager or an employee stays on their own scope: widening them to a
+       whole business unit would show them colleagues they may not see. */
+    if(role==='PM'||role==='EMP') return this.pool();
+    const want=this.unitsInScope();
+    if(!want) return this.cyclePopulation();
+    return this.cyclePopulation().filter(p=>p.bu && want.indexOf(p.bu)>=0);
+  }
   find(id){ return this.everyone().find(p=>p.id===id) || TEAM[0]; }
   plansOf(id){
     if(!this.cycleHasData()) return this.state.plans[id] || [];
@@ -4917,6 +4970,12 @@ class Component extends DCLogic {
       }
       return list;
     })(this);
+
+    /* The role list above is scoped to what the signed-in user may open.
+       Department succession counts must not move with that, so they read
+       this unfiltered index instead. Counting only, never navigation. */
+    const UNIT_ROLES = CRITICAL_ROLES.concat(s.extraRoles||[])
+      .filter(r=>(s.removedRoles||[]).indexOf(r.id)<0);
 
     // -------- tabs
     const TABDEF = {
@@ -5621,9 +5680,9 @@ class Component extends DCLogic {
     const coverExec = coverFor('EXEC'), coverDm = coverFor('DM');
 
     /* ---- progress by department ---- */
-    const deptPool = this.pool();
+    const deptPool = this.unitCohort();
     const leaderByPerson = {};
-    leaderAll.forEach(r=>{ if(r.incumbentId) leaderByPerson[r.incumbentId]=r; });
+    UNIT_ROLES.forEach(r=>{ if(r.incumbentId) leaderByPerson[r.incumbentId]=r; });
     const deptUnits = {};
     deptPool.forEach(p=>{ const b=p.bu||'Not mapped'; (deptUnits[b]=deptUnits[b]||[]).push(p); });
     const pctOf=(a,b)=>b?Math.round((a/b)*100):0;
@@ -5633,7 +5692,7 @@ class Component extends DCLogic {
         const pool=deptUnits[unit];
         const assessed=pool.filter(p=>!!p.box).length;
         const planned=pool.filter(p=>this.plansOf(p.id).length>0).length;
-        const leaders=pool.filter(p=>((role!=='HRBP' && p.level==='EXEC')||p.level==='DM') && leaderByPerson[p.id]);
+        const leaders=pool.filter(p=>(p.level==='EXEC'||p.level==='DM') && leaderByPerson[p.id]);
         const mapped=leaders.filter(p=>{
           const t=s.successors[leaderByPerson[p.id].id]||{};
           return REAL_TIERS.some(k=>(t[k]||[]).length>0);
@@ -5652,6 +5711,56 @@ class Component extends DCLogic {
              pct: leaders.length?pm:0, bar: leaders.length?barFor(pm):'#E0DAD0'}
           ]};
       });
+    /* ---- who is missing what ----------------------------------------
+       Built on deptPool, the same unit cohort the bars above are drawn
+       from, so the names here reconcile with the percentages rather than
+       telling a second story. Read-only: this reports the gap, it does
+       not change how anything is filed. */
+    const missNoAssess = deptPool.filter(p=>!p.box);
+    const missNoPlan   = deptPool.filter(p=>this.plansOf(p.id).length===0);
+    const missIsLeader = (p)=>p.level==='EXEC'||p.level==='DM';
+    const missNoSucc   = deptPool.filter(p=>{
+      if(!missIsLeader(p)) return false;
+      const r=leaderByPerson[p.id]; if(!r) return false;
+      const t=s.successors[r.id]||{};
+      return !REAL_TIERS.some(k=>(t[k]||[]).length>0);
+    });
+    const missNoRole = deptPool.filter(p=>missIsLeader(p) && !leaderByPerson[p.id]);
+    const MISS_SETS = {
+      'No assessment':{list:missNoAssess,
+        blurb:'In the '+this.cycleYear()+' population with no 9-box placement on file.'},
+      'No IDP / 8QTR':{list:missNoPlan,
+        blurb:'No development action filed on either the IDP or the 8-quarter plan.'},
+      'No successor':{list:missNoSucc,
+        blurb:'EXEC and DM leaders holding a critical role with nobody named. Emergency cover on its own does not count as a successor.'}
+    };
+    const MISS_KEYS = ['No assessment','No IDP / 8QTR','No successor'];
+    const missPick = MISS_KEYS.indexOf(s.missPick)>=0 ? s.missPick : MISS_KEYS[0];
+    const missChips = MISS_KEYS.map(k=>{
+      const on=missPick===k;
+      return {label:k, count:String(MISS_SETS[k].list.length),
+        bg:on?'#16171F':'#fff', fg:on?'#fff':'#5C5A55', border:on?'#16171F':'#EAE6DF',
+        subFg:on?'rgba(255,255,255,.65)':'#A8A399',
+        pick:()=>this.setState({missPick:k})};
+    });
+    const missSorted = MISS_SETS[missPick].list.slice().sort((a,b)=>
+      String(a.bu||'').localeCompare(String(b.bu||'')) ||
+      String(a.name||'').localeCompare(String(b.name||'')));
+    const MISS_CAP = 40;
+    const missRows = missSorted.slice(0,MISS_CAP).map((p,i)=>({
+      name:tidyName(p.name), initials:initials(p.name), avBg:avColor(p.id),
+      sub:(p.level||'Level not set')+' \u00b7 '+tidyUnit(p.bu),
+      divider:i===0?'transparent':'#F2EFE9',
+      open:()=>this.setState({screen:'person', personId:p.id, personTab:'overview'})
+    }));
+    const missMore = missSorted.length>MISS_CAP
+      ? ('Showing the first '+MISS_CAP+' of '+missSorted.length+', by department then name.') : '';
+    const missEmpty = missSorted.length===0;
+    const missBlurb = MISS_SETS[missPick].blurb
+      + (missPick==='No successor' && missNoRole.length
+          ? ' Separately, '+missNoRole.length+' EXEC or DM in scope hold no critical role on the succession map at all.'
+          : '');
+
     const coverRow = (label, c2, tint, bar)=>({
       level:label, covered:String(c2.covered), total:String(c2.total),
       pct: c2.total?Math.round((c2.covered/c2.total)*100):0,
@@ -6198,7 +6307,10 @@ class Component extends DCLogic {
       showSuccOverview: role==='ADMIN',
       succOverviewTiles, succTierRows, succStrategyRows, succWatchRows,
       deptProgressRows,
-      deptProgressNote: deptProgressRows.length+' departments in your scope. Assessment and plan completion are measured against everyone in the department; succession against its EXEC and DM leaders only.',
+      missChips, missRows, missMore, missEmpty, missBlurb,
+      missTitle:'Who is missing what',
+      missEmptyText:'Nothing outstanding in this scope on that measure.',
+      deptProgressNote: deptProgressRows.length+' departments in your scope, counted on the '+this.cycleYear()+' assessed population. Assessment and plan completion are measured against everyone in the department, succession against its EXEC and DM leaders. Every role sees the same figure for the same department.',
       succCoverRows,
       succCoverHeadline: coverBothTotal?Math.round((coverBothDone/coverBothTotal)*100)+'%':'0%',
       succCoverSub: coverBothDone+' of '+coverBothTotal+(role==='HRBP'?' DM roles':' EXEC and DM roles')+' have at least one named successor',
@@ -6555,7 +6667,11 @@ class Component extends DCLogic {
          tracker assigned them to themselves. */
       const set={}; mine.forEach(id=>{ if(id!==self) set[id]=true; });
       /* Executive roles are out of an HR partner's roster — DM and below only. */
-      return {kind:'hrbp', hp, people: all.filter(p=>set[p.id] && p.level!=='EXEC'),
+      /* The roster is the cycle's assessed population, the same basis Super
+         Admin counts on. Without this the partner was measured against every
+         record on file rather than against the cycle. */
+      const inCycle={}; this.cyclePopulation().forEach(p=>{ inCycle[p.id]=true; });
+      return {kind:'hrbp', hp, people: all.filter(p=>set[p.id] && inCycle[p.id] && p.level!=='EXEC'),
               label: hp ? (hp.short+"'s assigned talents") : 'Assigned talents'};
     }
     if(role==='EXEC'){
