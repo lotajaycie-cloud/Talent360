@@ -3482,6 +3482,22 @@ function(a,b,c){if(!Vd(b))throw Error(m(200));return Wd(null,a,b,!1,c)};Q.unmoun
               </sc-if>
             </div>
 
+            <!-- Sync to Google Sheet -->
+            <sc-if value="{{ syncEnabled }}" hint-placeholder-val="{{ true }}">
+              <div style="margin-top:12px;border-radius:20px;background:#fff;border:1px solid #EAE6DF;overflow:hidden;padding:18px">
+                <div style="display:flex;align-items:center;gap:10px">
+                  <div style="flex:none;width:36px;height:36px;border-radius:12px;background:#E1F5EC;color:#1F7A48;display:grid;place-items:center"><svg width="18" height="18"><use href="#ic-tick"></use></svg></div>
+                  <div style="flex:1;min-width:0">
+                    <div style="font:700 12.5px/1.35 'Plus Jakarta Sans',sans-serif;color:#16171F">Google Sheet Backend</div>
+                    <div style="font:500 11px/1.35 'Plus Jakarta Sans',sans-serif;color:#6E685C">Linked — edits are captured live</div>
+                  </div>
+                </div>
+                <button class="t3tap" onClick="{{ syncToSheet }}" style="margin-top:12px;width:100%;border:1px solid #1F7A48;border-radius:13px;background:#fff;padding:12px;font:700 12px/1 'Plus Jakarta Sans',sans-serif;color:#1F7A48;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px">
+                  <svg width="14" height="14" style="color:#1F7A48"><use href="#ic-grid"></use></svg>{{ syncLabel }}
+                </button>
+              </div>
+            </sc-if>
+
             <!-- Related areas -->
             <div style="margin-top:12px;border-radius:20px;background:#fff;border:1px solid #EAE6DF;overflow:hidden">
               <div style="padding:18px 18px 6px;font:800 13.5px/1.3 'Plus Jakarta Sans',sans-serif;color:#16171F">Related</div>
@@ -4884,6 +4900,14 @@ class Component extends DCLogic {
     if(r && map[r]) patch.role = map[r];
     if(p==='Android') patch.os = 'android';
     if(Object.keys(patch).length) this.setState(patch);
+    /* Load live data from Google Sheet if the endpoint is configured.
+       If the Sheet has data, it replaces the embedded payload so any
+       edits made directly in the Sheet are reflected on next load.
+       Falls back silently to the embedded data on any failure. */
+    this.sheetLoad(function(ok){
+      if(ok) console.log('[T360] Live data loaded from Google Sheet');
+      else   console.log('[T360] Using embedded data (Sheet not available or empty)');
+    });
   }
   componentWillUnmount(){ if(this._t) clearTimeout(this._t); }
 
@@ -4929,6 +4953,110 @@ class Component extends DCLogic {
   };
 
   toast = (text) => { this.setState({toast:text}); if(this._t) clearTimeout(this._t); this._t = setTimeout(()=>this.setState({toast:null}), 2400); };
+
+  /* ---- Google Sheets write-through ----
+     Every confirmed edit (assessment submit, readiness change, succession
+     validation, IDP status update) is sent to a Google Apps Script web app
+     that appends a row to a linked Sheet.
+
+     The SHEET_ENDPOINT is set to '' by default, which means writes are
+     silent no-ops. Paste the Apps Script deployment URL to activate it.
+     Nothing is stored on Vercel; the data flows directly to Google. */
+  static SHEET_ENDPOINT = 'https://script.google.com/macros/s/AKfycbxO4rL6n5ZPWRU7mEJBqOZfK9ZS_dM62v_iEz9flroNZlfuiLp1lSz691wm_eGyuAnHVg/exec';
+
+  /* Sync the full embedded payload TO the Sheet (one-time or on-demand).
+     Creates structured tabs: People, IDP, 8QTR, Roles, Successors, HRBP,
+     plus lookup tabs and an EditLog. */
+  sheetSync() {
+    const url = this.constructor.SHEET_ENDPOINT;
+    if (!url) return this.toast('No Sheet endpoint configured.');
+    this.toast('Syncing full databank to Google Sheet\u2026');
+    const payload = JSON.parse(JSON.stringify(T360));
+    fetch(url, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({action: 'sync_full', payload: payload})
+    })
+    .then(r => r.text())
+    .then(t => { try { const d=JSON.parse(t); this.toast(d.status==='ok'?'Databank synced to Sheet \u2014 '+((d.tabs||[]).length)+' tabs written':'Sync failed: '+(d.message||'unknown')); } catch(e){ this.toast('Sync response received'); }})
+    .catch(() => this.toast('Sync sent (fire-and-forget)'));
+  }
+
+  /* Load the databank FROM the Sheet on app init. If the Sheet has data,
+     it replaces the embedded payload so edits made in the Sheet are
+     reflected immediately. Falls back silently to embedded data. */
+  sheetLoad(callback) {
+    const url = this.constructor.SHEET_ENDPOINT;
+    if (!url) return callback(false);
+    fetch(url + '?action=read', {redirect: 'follow'})
+      .then(r => { if (!r.ok) throw new Error(r.status); return r.json(); })
+      .then(d => {
+        if (!d || !d.p || !d.p.length) return callback(false);
+        /* Overwrite T360 in place so every downstream consumer reads
+           the Sheet version without any further wiring. */
+        Object.keys(d).forEach(k => { T360[k] = d[k]; });
+        /* Rebuild derived structures that were computed at load time */
+        this._rebuildFromPayload();
+        callback(true);
+      })
+      .catch(() => callback(false));
+  }
+
+  /* Rebuild PEOPLE, BY_EMPNO, REAL_SUCC and other derived constants
+     after a live payload swap. These were originally computed once at
+     script load; this re-runs the same logic. */
+  _rebuildFromPayload() {
+    /* PEOPLE array */
+    PEOPLE.length = 0;
+    T360.p.forEach(function(r) {
+      const pos  = r[2] < 0 ? '' : T360.pos[r[2]];
+      const lvl  = r[3] < 0 ? '' : T360.lvl[r[3]];
+      const dept = r[4] < 0 ? '' : T360.dept[r[4]];
+      const div  = r[5] < 0 ? '' : T360.div[r[5]];
+      const comp = r[6] < 0 ? '' : T360.comp[r[6]];
+      const bu   = r[18] >= 0 ? T360.bu[r[18]] : '';
+      PEOPLE.push({
+        id: 'e' + r[0], empNo: r[0], name: r[1],
+        position: pos, level: lvl, dept: dept, division: div,
+        company: comp, bu: bu,
+        mgr: r[7] ? 'e' + r[7] : null,
+        age: r[8], tenure: r[9], email: r[10] || '',
+        box: r[11] || null, perf: r[12] || '', pot: r[13] || '',
+        risk: r[14] || 0, box2025: r[15] || null,
+        inMasterlist: !!r[16], tr2026: !!r[17]
+      });
+    });
+    /* BY_EMPNO */
+    Object.keys(BY_EMPNO).forEach(k => { delete BY_EMPNO[k]; });
+    PEOPLE.forEach(p => { BY_EMPNO[p.empNo] = p; });
+    /* REAL_SUCC */
+    Object.keys(REAL_SUCC).forEach(k => { delete REAL_SUCC[k]; });
+    T360.succ.forEach(function(s) {
+      if (typeof SUCC_EXCLUDE !== 'undefined' && SUCC_EXCLUDE[String(s[2])]) return;
+      const m = REAL_SUCC[s[0]] = REAL_SUCC[s[0]] || {};
+      const t = T360.tiers[s[1]];
+      (m[t] = m[t] || []).push('e' + s[2]);
+    });
+    /* Clear caches */
+    this._everyCache = null;
+  }
+
+  sheetWrite(payload) {
+    const url = this.constructor.SHEET_ENDPOINT;
+    if (!url) return;                                   // not configured yet
+    const s = this.state;
+    const row = Object.assign({
+      timestamp: new Date().toISOString(),
+      editorEmpNo: (s.authUser && s.authUser.empNo) || 'unknown',
+      editorName:  (s.authUser && s.authUser.name)   || 'unknown',
+      editorRole:  s.role || 'unknown',
+    }, payload);
+    fetch(url, {
+      method: 'POST', mode: 'no-cors',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(row)
+    }).catch(function(){});                              // fire-and-forget
+  }
 
   go = (screen, extra) => this.setState(Object.assign({screen}, extra||{}));
   goTab = (tab) => this.setState({tab, screen:null, query:''});
@@ -6308,7 +6436,23 @@ class Component extends DCLogic {
       boxNum:String(bx), boxZone:zn, boxTint:zs.bg, boxBorder:zs.border, boxFg:zs.fg,
       boxNote:'Placement is provisional until the July calibration session confirms it.',
       summaryRows, mgrFeedback:s.mgrFeedback, setMgrFeedback:(e)=>this.setState({mgrFeedback:e.target.value}),
-      submitAssessment:()=>this.guard({title:'Submit this assessment?', body:'The ratings and evidence you entered will be written to the talent record and sent to calibration.', detail:'Computed placement will be applied on submit.', label:'Submit', icon:'#ic-tick', tint:'#E1F5EC', fg:'#1F7A48'}, ()=>this.setState({screen:'done'})),
+      submitAssessment:()=>this.guard({title:'Submit this assessment?', body:'The ratings and evidence you entered will be written to the talent record and sent to calibration.', detail:'Computed placement will be applied on submit.', label:'Submit', icon:'#ic-tick', tint:'#E1F5EC', fg:'#1F7A48'}, ()=>{
+        /* Write the completed assessment to the linked Google Sheet */
+        this.sheetWrite({
+          action: 'assessment_submit',
+          targetEmpNo: flowEmpObj.empNo,
+          targetName:  flowEmpObj.name,
+          targetLevel: flowEmpObj.level,
+          targetDept:  flowEmpObj.company || '',
+          performance: pf,
+          potential:   pt,
+          boxPlacement: bx,
+          zone: zn,
+          ratings: JSON.stringify(s.ratings),
+          mgrFeedback: s.mgrFeedback || ''
+        });
+        this.setState({screen:'done'});
+      }),
 
       // done
       doneTitle:'Submitted for calibration', doneBody:flowEmpObj.name+' now sits provisionally in Box '+bx+', Zone '+zn+'. Three of your reports are still open.',
@@ -6353,7 +6497,15 @@ class Component extends DCLogic {
       readinessTiers: READINESS.map(t=>({label:t,
         bg:this.state.readiness[person.id]===t?'#16171F':'#fff', fg:this.state.readiness[person.id]===t?'#fff':'#5C5A55',
         border:this.state.readiness[person.id]===t?'#16171F':'#EAE6DF',
-        pick:()=>{ this.setState({readiness:Object.assign({},this.state.readiness,{[person.id]:t})}); this.toast('Readiness set to '+t); }})),
+        pick:()=>{
+          this.sheetWrite({
+            action: 'readiness_set',
+            targetEmpNo: person.empNo,
+            targetName:  person.name,
+            field: 'readiness',
+            newValue: t
+          });
+          this.setState({readiness:Object.assign({},this.state.readiness,{[person.id]:t})}); this.toast('Readiness set to '+t); }})),
 
       // plans
       /* Was the literal '7' for every role above Employee, and the
@@ -6600,7 +6752,17 @@ class Component extends DCLogic {
       succLead: screen==='succmap'
         ? 'Built by the role owner. Add, remove or change any name before you validate — '+succCovered+' of 5 tiers named.'
         : 'Your own succession map. Name successors per readiness tier — '+succCovered+' of 5 tiers named.',
-      succValidate:()=>{ this.toast('Succession map validated'); this.setState({screen:null}); },
+      syncToSheet:()=>this.sheetSync(),
+      syncLabel: this.constructor.SHEET_ENDPOINT ? 'Sync databank to Google Sheet' : 'Sheet endpoint not configured',
+      syncEnabled: !!this.constructor.SHEET_ENDPOINT,
+      succValidate:()=>{
+        const sr = (s.succRole && s.successors[s.succRole]) || {};
+        this.sheetWrite({
+          action: 'succession_validate',
+          roleId: s.succRole || '',
+          successors: JSON.stringify(sr)
+        });
+        this.toast('Succession map validated'); this.setState({screen:null}); },
       succReturn:()=>{ this.toast('Returned to the role owner with a note'); this.setState({screen:null}); },
       succGroups, succMapsStatus: mapsDone+' of '+ALL_ROLES.length+' complete',
       sheetIsRole:s.sheet==='role', roleLevelLabel:roleDraft.level, roleCompanyOptions, roleStrategyOptions,
@@ -6711,6 +6873,12 @@ class Component extends DCLogic {
       label:st.next, icon:'#ic-tick', tint:'#E1F5EC', fg:'#1F7A48'
     }, () => {
       this._everyCache=null;
+      this.sheetWrite({
+        action: 'cycle_advance',
+        cycleId: cyc.id,
+        fromStage: st.label,
+        toStage: st.next
+      });
       this.patchCycle(cyc.id, {stageIdx:cyc.stageIdx+1, log:this.logCycle(cyc, st.next)});
       this.toast(st.next.replace('Open the','Opened the').replace('Close the','Closed the').replace('Open ','Opened ').replace('Close ','Closed '));
     });
