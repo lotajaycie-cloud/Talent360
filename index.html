@@ -2296,6 +2296,16 @@ function(a,b,c){if(!Vd(b))throw Error(m(200));return Wd(null,a,b,!1,c)};Q.unmoun
   @keyframes tabPop{0%{transform:scale(.8)}55%{transform:scale(1.2)}100%{transform:scale(1)}}
   @keyframes tabPulse{0%,100%{transform:scale(1);box-shadow:0 0 0 0 rgba(255,177,192,0)}50%{transform:scale(1.08);box-shadow:0 0 0 6px rgba(255,177,192,.12)}}
   @media (prefers-reduced-motion:reduce){.t3tabicon{animation:none!important}}
+  /* Bottom bar. Desktop: in the layout as before. Phones and tablets: floats over
+     the content, anchored to the bottom edge, and slides away while scrolling down.
+     The spacer keeps the last content reachable above it, so nothing jumps. */
+  .t3tabspacer{height:0}
+  @media (max-width:1024px), (pointer:coarse){
+    .t3tabbar{position:absolute;left:0;right:0;bottom:0;z-index:30;transition:transform .28s cubic-bezier(.2,.8,.2,1);will-change:transform}
+    html[data-t3nav="hidden"] .t3tabbar{transform:translateY(calc(100% + 1px))}
+    .t3tabspacer{height:var(--t3-tabbar-h,72px)}
+  }
+  @media (prefers-reduced-motion:reduce){.t3tabbar{transition:none}}
   @keyframes sheetIn{from{transform:translateY(100%)}to{transform:none}}
   @keyframes fadeIn{from{opacity:0}to{opacity:1}}
   @keyframes popIn{from{opacity:0;transform:scale(.94)}to{opacity:1;transform:none}}
@@ -2397,7 +2407,7 @@ function(a,b,c){if(!Vd(b))throw Error(m(200));return Wd(null,a,b,!1,c)};Q.unmoun
   <symbol id="ic-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.2" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M12 7.6V12l3.2 2" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></symbol>
 </svg>
 
-<div style="height:100vh;height:100dvh;display:flex;flex-direction:column;background:#191b22;overflow:hidden;overscroll-behavior:none">
+<div style="position:fixed;inset:0;display:flex;flex-direction:column;background:#191b22;overflow:hidden;overscroll-behavior:none">
 
   <!-- APP SHELL -->
   <div style="position:relative;flex:1;min-height:0;display:flex;flex-direction:column">
@@ -2477,7 +2487,7 @@ function(a,b,c){if(!Vd(b))throw Error(m(200));return Wd(null,a,b,!1,c)};Q.unmoun
       </div>
 
       <!-- SCROLL BODY -->
-      <div class="t3scroll" style="position:relative;flex:1;min-height:0;background:#191b22">
+      <div class="t3scroll t3main" style="position:relative;flex:1;min-height:0;background:#191b22">
       <div style="max-width:980px;margin:0 auto">
 
         <!-- ============ HOME ============ -->
@@ -4123,11 +4133,12 @@ function(a,b,c){if(!Vd(b))throw Error(m(200));return Wd(null,a,b,!1,c)};Q.unmoun
         </sc-if>
 
       </div>
+        <sc-if value="{{ showTabs }}" hint-placeholder-val="{{ true }}"><div class="t3tabspacer" aria-hidden="true"></div></sc-if>
       </div>
 
       <!-- BOTTOM TABS -->
       <sc-if value="{{ showTabs }}" hint-placeholder-val="{{ true }}">
-        <div style="flex:none;background:rgba(17,19,25,.94);backdrop-filter:blur(12px);border-top:1px solid rgba(255,255,255,.08);padding:9px 8px calc({{ tabPadBottom }}px + env(safe-area-inset-bottom,0px));display:flex;max-width:980px;margin:0 auto;width:100%">
+        <div class="t3tabbar" style="flex:none;background:rgba(17,19,25,.94);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-top:1px solid rgba(255,255,255,.08);padding:8px 8px max(8px, env(safe-area-inset-bottom,0px));display:flex;max-width:980px;margin:0 auto;width:100%">
           <sc-for list="{{ tabs }}" as="t" hint-placeholder-count="5">
             <button class="t3tap" onClick="{{ t.pick }}" aria-current="{{ t.on }}" style="flex:1;border:none;background:none;padding:3px 2px;display:flex;flex-direction:column;align-items:center;gap:3px;color:{{ t.fg }};transition:color .18s ease">
               <span class="t3tabicon" style="display:grid;place-items:center;width:48px;height:30px;border-radius:999px;background:{{ t.halo }};animation:{{ t.anim }};transition:background .2s ease"><svg width="22" height="22"><use href="{{ t.icon }}"></use></svg></span>
@@ -5073,6 +5084,27 @@ class Component extends DCLogic {
        If the Sheet has data, it replaces the embedded payload so any
        edits made directly in the Sheet are reflected on next load.
        Falls back silently to the embedded data on any failure. */
+    /* Bottom bar auto-hide (phones and tablets only). Direction is measured over
+       a short distance so small jitters and momentum stops never toggle it. */
+    if(typeof window!=='undefined' && window.matchMedia && typeof document!=='undefined' && document.documentElement){
+      const mq=window.matchMedia('(max-width:1024px), (pointer:coarse)'), root=document.documentElement;
+      this._navMeasure=()=>{ const bar=document.querySelector('.t3tabbar'); if(bar && bar.offsetHeight) root.style.setProperty('--t3-tabbar-h', bar.offsetHeight+'px'); };
+      this._navShow=()=>{ if(root.hasAttribute('data-t3nav')) root.removeAttribute('data-t3nav'); };
+      let lastY=0, acc=0, lastEl=null;
+      document.addEventListener('scroll',(e)=>{
+        const t=e.target; if(!t || !t.classList || !t.classList.contains('t3main')) return;
+        if(!mq.matches){ this._navShow(); return; }
+        const y=t.scrollTop, max=t.scrollHeight-t.clientHeight;
+        if(t!==lastEl){ lastEl=t; lastY=y; acc=0; this._navMeasure(); }
+        const d=y-lastY; lastY=y;
+        if(y<=24 || y>=max-4){ acc=0; this._navShow(); return; }
+        acc = (d>0)===(acc>0) ? acc+d : d;
+        if(acc>18) root.setAttribute('data-t3nav','hidden');
+        else if(acc<-18) this._navShow();
+      }, true);
+      window.addEventListener('resize', this._navMeasure);
+      if(mq.addEventListener) mq.addEventListener('change', ()=>{ this._navShow(); this._navMeasure(); });
+    }
     /* Remember each view's scroll position so Back can return to it. */
     if(typeof document!=='undefined' && document.addEventListener){
       document.addEventListener('scroll', (e)=>{ const t=e.target;
@@ -5231,6 +5263,8 @@ class Component extends DCLogic {
     if(key===this._viewKey) return;
     const back=this._goingBack, memo=this._scrollMemo||{};
     this._goingBack=false; this._viewKey=key;
+    if(this._navShow) this._navShow();
+    if(this._navMeasure && typeof requestAnimationFrame!=='undefined') requestAnimationFrame(this._navMeasure);
     this._scrollTop(back && memo[key]!=null ? memo[key] : 0);
   }
   back = () => {
